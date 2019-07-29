@@ -1,9 +1,9 @@
 from __future__ import division
 import sys
-from scipy.signal import blackmanharris
 from numpy.fft import rfft, irfft
 from numpy import argmax, sqrt, mean, absolute, arange, log10
 import numpy as np
+import matplotlib.pyplot as plt
 import audioBasicIO
 
 
@@ -28,93 +28,77 @@ def find_range(f, x):
             break
     return (lowermin, uppermin)
 
-
-def THDN(signal, sample_rate):
-    """
-    Measure the THD+N for a signal and print the results
-    Prints the estimated fundamental frequency and the measured THD+N.  This is
-    calculated from the ratio of the entire signal before and after
-    notch-filtering.
-    Currently this tries to find the "skirt" around the fundamental and notch
-    out the entire thing.  A fixed-width filter would probably be just as good,
-    if not better.
-    """
-    # Get rid of DC and window the signal
-
-    # TODO: Do this in the frequency domain, and take any skirts with it?
-    signal -= mean(signal)
-    windowed = signal * blackmanharris(len(signal))  # TODO Kaiser?
-
-    # Measure the total signal before filtering but after windowing
-    total_rms = rms_flat(windowed)
-
-    # Find the peak of the frequency spectrum (fundamental frequency), and
-    # filter the signal by throwing away values between the nearest local
-    # minima
-    f = rfft(windowed)
-    i = argmax(abs(f))
-
-    # Not exact
-    print('Frequency: %f Hz' % (sample_rate * (i / len(windowed))))
-    lowermin, uppermin = find_range(abs(f), i)
-    f[lowermin: uppermin] = 0
-
-    # Transform noise back into the signal domain and measure it
-    # TODO: Could probably calculate the RMS directly in the frequency domain
-    # instead
-    noise = irfft(f)
-    THDN = rms_flat(noise) / total_rms
-    print("THD+N:     %.4f%% or %.1f dB" % (THDN * 100, 20 * log10(THDN)))
-
-def replaceZeroes(data):
-  min_nonzero = np.min(data[np.nonzero(data)])
-  data[data == 0] = min_nonzero
-  return data
-
-def analyze_channels(filename, function):
-    """
-    Given a filename, run the given analyzer function on each channel of the
-    file
-    """
+def freqCalculator(filename):
     [signal, sample_rate, channels] = audioBasicIO.readAudioFile(filename)
-    print('Analyzing "' + filename + '"...')
     print("shape = {}, dim = {}".format(signal.shape, signal.shape[1]))
-    amplitude = np.absolute(signal) / 32767
-    #print(amplitude[0][0:60])
-    sum = 0
-    amplitude = replaceZeroes(amplitude)
-    for i in range(signal.shape[1]):
-        sum += 20 * np.log10(amplitude[0, i])
-    db = sum / signal.shape[1]
-    print(db)
+    samp_rate = sample_rate
+    chunk = signal.shape[1]
+    data = signal[0][:]
 
-'''
-    if channels == 1:
-        # Monaural
-        function(signal, sample_rate)
-    elif channels == 2:
-        # Stereo
-        if np.array_equal(signal[:, 0], signal[:, 1]):
-            print('-- Left and Right channels are identical --')
-            function(signal[:, 0], sample_rate)
-        else:
-            print('-- Left channel --')
-            function(signal[:, 0], sample_rate)
-            print('-- Right channel --')
-            function(signal[:, 1], sample_rate)
-    else:
-        # Multi-channel
-        for ch_no, channel in enumerate(signal.transpose()):
-            print('-- Channel %d --' % (ch_no + 1))
-            function(channel, sample_rate)
-'''
+    # mic sensitivity correction and bit conversion
+    mic_sens_dBV = -47.0 # mic sensitivity in dBV + any gain
+    mic_sens_corr = np.power(10.0,mic_sens_dBV/20.0) # calculate mic sensitivity conversion factor
 
+    # (USB=5V, so 15 bits are used (the 16th for negatives)) and the manufacturer microphone sensitivity corrections
+    data = ((data/np.power(2.0,15))*5.25)*(mic_sens_corr) 
+
+    # compute FFT parameters
+    f_vec = samp_rate*np.arange(chunk/2)/chunk # frequency vector based on window size and sample rate
+    mic_low_freq = 100 # low frequency response of the mic (mine in this case is 100 Hz)
+    low_freq_loc = np.argmin(np.abs(f_vec-mic_low_freq))
+    fft_data = (np.abs(np.fft.fft(data))[0:int(np.floor(chunk/2))])/chunk
+    fft_data[1:] = 2*fft_data[1:]
+
+    max_loc = np.argmax(fft_data[low_freq_loc:])+low_freq_loc
+
+    # plot
+    plt.style.use('ggplot')
+    plt.rcParams['font.size']=18
+    fig = plt.figure(figsize=(13,8))
+    ax = fig.add_subplot(111)
+    plt.plot(f_vec,fft_data)
+    ax.set_ylim([0,2*np.max(fft_data)])
+    plt.xlabel('Frequency [Hz]')
+    plt.ylabel('Amplitude [Pa]')
+    ax.set_xscale('log')
+    plt.grid(True)
+
+    # max frequency resolution 
+    plt.annotate(r'$\Delta f_{max}$: %2.1f Hz' % (samp_rate/(2*chunk)),xy=(0.7,0.92),\
+                xycoords='figure fraction')
+
+    # annotate peak frequency
+    annot = ax.annotate('Freq: %2.1f'%(f_vec[max_loc]),xy=(f_vec[max_loc],fft_data[max_loc]),\
+                        xycoords='data',xytext=(0,30),textcoords='offset points',\
+                        arrowprops=dict(arrowstyle="->"),ha='center',va='bottom')
+        
+    #plt.savefig('fft_1kHz_signal.png',dpi=300,facecolor='#FCFCFC')
+    #plt.show()
+    a_weight_data_f = 20*np.log10(fft_data[1:]/0.00002)
+    print(a_weight_data_f.mean())
+
+def spl_flat(a):
+    return 20*np.log10(np.sqrt(np.mean(np.absolute(a)**2)))
+
+def dbCalculator(filename):
+    [signal, sample_rate, channels] = audioBasicIO.readAudioFile(filename)
+    print("shape = {}, dim = {}".format(signal.shape, signal.shape[1]))
+    data = signal[0][:]/32767
+    N = data.shape[0]
+    T = 1/sample_rate
+    np.set_printoptions(suppress=True)
+    t_vec = np.arange(N)*T # time vector for plotting
+
+    plt.plot(t_vec,data)
+    #plt.show()
+
+    print(spl_flat(data))
 
 files = sys.argv[1:]
 if files:
     for filename in files:
         try:
-            analyze_channels(filename, THDN)
+            dbCalculator(filename)
         except Exception as e:
             print('Couldn\'t analyze "' + filename + '"')
             print(e)
