@@ -32,7 +32,7 @@ def thdCalculator(signal, sample_rate, freq):
 
     # (USB=5V, so 15 bits are used (the 16th for negatives)) and the manufacturer microphone sensitivity corrections
     #data = ((data/np.power(2.0,15))*5.25)*(mic_sens_corr)
-    data = ((signal/np.power(2.0,15))*5.25)
+    data = (signal/np.power(2.0,15))
 
     # compute FFT parameters
     f_vec = sample_rate*np.arange(chunk/2)/chunk # frequency vector based on window size and sample rate
@@ -77,7 +77,7 @@ def thdCalculator(signal, sample_rate, freq):
     freq_step = freq
     target_freq = freq
     counter = 1
-    while target_freq < 20000:
+    while target_freq < sample_rate/2:
         low_loc = getFreqLoc(f_vec, target_freq - delta_loc)
         high_loc = getFreqLoc(f_vec, target_freq + delta_loc)
         #print("low_loc = {}, high_loc = {}".format(low_loc, high_loc))
@@ -90,8 +90,7 @@ def thdCalculator(signal, sample_rate, freq):
         target_freq = freq_step * counter
     #print(freq_rms[:30])
     thd = rss_flat(freq_rms)/rms_fund
-    print("thd = {} %".format(thd*100))
-
+    print("thd = {0:.3f} %".format(thd*100))
 
 def thdHelper(filename, freq):
     [signal, sample_rate, channels] = audioBasicIO.readAudioFile(filename)
