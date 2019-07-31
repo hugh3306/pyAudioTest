@@ -3,6 +3,10 @@
 <BR>usage: rmscalculator.py [file] [1st period start] [1st period end] [2nd period start] [2nd period end]
 <BR>example: rmscalculator.py test.wav 1 5 11 15
 
+- Calculate total harmonic distortion
+<BR>usage: thdcalculator.py [file] [fundamental freq] [period start] [period end]
+<BR>example: rmscalculator.py test.wav 200 1 5
+
 [Note]
 1. Only works for 16bit audio file format. Need changes to support other formats.
 2. Support audio file up to 4 channels
