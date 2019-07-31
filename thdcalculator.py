@@ -90,20 +90,38 @@ def thdCalculator(signal, sample_rate, freq):
         target_freq = freq_step * counter
     #print(freq_rms[:30])
     thd = rss_flat(freq_rms)/rms_fund
-    print("thd = {0:.3f} %".format(thd*100))
+    return thd
 
-def thdHelper(filename, freq):
+def thdHelper(filename, freq, t1, t2):
+    if (t1 > t2):
+        print('invalid input: t1 > t2')
+        return
     [signal, sample_rate, channels] = audioBasicIO.readAudioFile(filename)
     print("shape = {}, dim = {}, sample_rate = {} channels = {}".format(signal.shape, signal.shape[1], sample_rate, channels))
     sampleNum = signal.shape[1]
     trackLen = sampleNum/sample_rate
     print('track length = %.2f seconds' % trackLen)
-    data = signal[0][:]
-    thdCalculator(data, sample_rate, freq)
+    if (t2 > trackLen):
+        print('invalid input: t2 > trackLen')
+        return
+
+    if (freq > sample_rate / 4):
+        print('invalid input: fundamental freq not supported')
+        return
+
+    output = []
+    for i in range(channels):
+        thd = thdCalculator(signal[i][t1*sample_rate : t2*sample_rate], sample_rate, freq)
+        output.append(thd)
+
+    ch = 1
+    for thd in output:
+        print("channel {0}: thd = {1:.3f} %".format(ch, thd*100))
+        ch += 1
 
 def showUsage():
-    print('usage: thdcalculator.py [file] [1st period start] [1st period end]')
-    print('example: rmscalculator.py test.wav 1 5')
+    print('usage: thdcalculator.py [file] [fundamental freq] [period start] [period end]')
+    print('example: rmscalculator.py test.wav 200 1 5')
 
 def main():
     if (len(sys.argv) < 5):
@@ -115,8 +133,7 @@ def main():
     t2 = int(sys.argv[4])
     print('filename = ' + filename)
     print("freq = {}, t1 = {}, t2 = {}".format(freq, t1, t2))
-    thdHelper(filename, freq)
-    #dbCalculatorHelper(filename, t1, t2)
+    thdHelper(filename, freq, t1, t2)
 
 if __name__== "__main__":
   main()

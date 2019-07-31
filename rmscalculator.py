@@ -47,7 +47,7 @@ def showUsage():
 
 def dbCalculatorHelper(filename, t1, t2, t3, t4):
     if (t1 > t2 or t3 > t4):
-        showUsage()
+        print('invalid input: t1 > t2 or t3 > t4')
         return
     [signal, sample_rate, channels] = audioBasicIO.readAudioFile(filename)
     print("shape = {}, dim = {}, sample_rate = {} channels = {}".format(signal.shape, signal.shape[1], sample_rate, channels))
@@ -56,7 +56,7 @@ def dbCalculatorHelper(filename, t1, t2, t3, t4):
     print('track length = %.2f seconds' % trackLen)
 
     if (t2 > trackLen or t4 > trackLen):
-        showUsage()
+        print('invalid input: t2 > trackLen or t4 > trackLen')
         return
     if (channels > 4):
         print('audio file channels should be <= 4')
@@ -82,7 +82,7 @@ def dbCalculatorHelper(filename, t1, t2, t3, t4):
 
 def dbCalculatorHelper2(filename1, filename2, t1, t2, t3, t4):
     if (t1 > t2 or t3 > t4):
-        showUsage()
+        print('invalid input: t1 > t2 or t3 > t4')
         return
     [signal, sample_rate, channels] = audioBasicIO.readAudioFile(filename1)
     [signal2, sample_rate2, channels2] = audioBasicIO.readAudioFile(filename2)
@@ -95,7 +95,7 @@ def dbCalculatorHelper2(filename1, filename2, t1, t2, t3, t4):
     print('track2 length = %.2f seconds' % trackLen2)
 
     if (t2 > trackLen or t4 > trackLen2):
-        showUsage()
+        print('invalid input: t2 > trackLen or t4 > trackLen2')
         return
     if (channels > 4 or channels2 > 4):
         print('audio file channels should be <= 4')
