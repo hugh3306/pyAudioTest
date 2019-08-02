@@ -62,15 +62,18 @@ def dbCalculatorHelper(filename, t1, t2, t3, t4):
         print('audio file channels should be <= 4')
         return
 
-    fig, ax = plt.subplots()
-    fig.suptitle('Test Result', fontsize=14, fontweight='bold')
+    #fig, ax = plt.subplots()
+    #fig.suptitle('Test Result', fontsize=14, fontweight='bold')
     # these are matplotlib.patch.Patch properties
     props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
 
     for i in range(channels):
         db1 = dbCalculator(signal[i][t1*sample_rate : t2*sample_rate], sample_rate)
         db2 = dbCalculator(signal[i][t3*sample_rate : t4*sample_rate], sample_rate)
+        print('channel:',i+1)
+        print("1st period = {0:.4f}, 2nd period = {1:.4f}, difference = {2:.4f}".format(db1, db2, abs(db1 - db2)))
 
+        '''
         textstr = '\n'.join((
         r'1st period = %.4f dB' % (db1, ),
         r'2nd period = %.4f dB' % (db2, ),
@@ -78,7 +81,8 @@ def dbCalculatorHelper(filename, t1, t2, t3, t4):
         # place a text box in upper left in axes coords
         ax.text(0.05, 0.95 - 0.24*i, textstr, transform=ax.transAxes, fontsize=14,
             verticalalignment='top', bbox=props)
-    plt.show()
+        '''
+    #plt.show()
 
 def dbCalculatorHelper2(filename1, filename2, t1, t2, t3, t4):
     if (t1 > t2 or t3 > t4):
